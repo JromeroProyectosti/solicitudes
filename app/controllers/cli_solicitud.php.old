@@ -1,0 +1,334 @@
+<?php if ( ! defined('BASEPATH')) exit('No direct script access allowed');
+/*
+ * To change this license header, choose License Headers in Project Properties.
+ * To change this template file, choose Tools | Templates
+ * and open the template in the editor.
+ */
+
+/**
+ * Description of cli_solicitud
+ *
+ * @author John
+ */
+class Cli_solicitud extends MY_Controller{
+    //put your code here
+    public function __construct() {
+        parent::__construct(true);
+        $this->data['scripts']="<script>
+    $(document).ready(function() {
+        $('#datatable-solicitudes').DataTable({
+                responsive: true,
+                'language':{
+                    'url':'http://cdn.datatables.net/plug-ins/f2c75b7247b/i18n/Spanish.json'
+                }
+        });
+    });
+</script>";
+    }
+    public function solicitudes($id_estado=0,$page="solicitud"){
+        $this->data['titulo']="Solicitudes";
+        $filtro=null;
+        if($id_estado>0){
+            $filtro=array("e.idEstadosolicitud"=>$id_estado);
+        }
+        $this->load->model("solicitud_model");
+        $detalle['listado']=$this->solicitud_model->get_listado("*",$filtro);
+        
+        $detalle['modifica']=$page;
+        $this->load->view("template/header",$this->data);
+        $this->load->view("documentos/solicitudes/listado",$detalle);
+        $this->load->view("template/footer",$this->data);
+    }
+    
+    public function solicitudes_abiertas(){
+        $this->solicitudes(1,"abiertas");
+        $this->load->model("solicitud_model");
+        
+        
+    }
+    public function abiertas($id_solicitud){
+        $this->load->model("solicitud_model");
+        $this->data['scripts']="<script>
+    $(document).ready(function() {
+        $('#datatable-productos').DataTable({
+                responsive: true,
+                'language':{
+                    'url':'http://cdn.datatables.net/plug-ins/f2c75b7247b/i18n/Spanish.json'
+                }
+        });
+    });
+</script>";
+        
+        //reservando
+        if($this->input->post("hdAccion")){
+            $this->load->model("productos_model");
+            $detalle_solicitud=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+           
+            foreach($detalle_solicitud as $item){
+                $producto=$this->productos_model->get_listado_productos("*",$item['idproductos']);
+                
+                $array_campos=array(
+                    "ReservaProducto"=>($producto['ReservaProducto']+$item["CantidadDetallesolicitud"])
+                );
+                
+                
+               $this->productos_model->modificar($item['idproductos'],$array_campos,false);
+            }
+            $this->solicitud_model->modificar_solicitud($id_solicitud,array("idEstadosolicitud"=>$this->input->post("hdAccion")));
+            
+            redirect("solicitudes_abiertas");
+            
+        }
+       
+        $detalle['formaenvio']=$this->common_model->get_forma_envio();
+        
+        $detalle['estado']=$this->common_model->get_estado_solicitud();
+        $detalle['solicitud']=$this->solicitud_model->get_solicitud($id_solicitud);
+    
+        $detalle['detalle']=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+        $this->load->view("template/header",$this->data);
+        $this->load->view("documentos/solicitudes/abiertas",$detalle);
+        $this->load->view("template/footer",$this->data);
+    }
+    
+    
+    public function solicitudes_reservada(){
+        
+        $this->solicitudes(2,"reservadas");
+        
+        
+    }
+    public function reservadas($id_solicitud){
+        $this->load->model("solicitud_model");
+        $this->data['scripts']="<script>
+    $(document).ready(function() {
+        $('#datatable-productos').DataTable({
+                responsive: ,
+                'language':{
+                    'url':'http://cdn.datatables.net/plug-ins/f2c75b7247b/i18n/Spanish.json'
+                }
+        });
+    });
+</script>";
+        $this->load->library('form_validation');
+        //$this->form_validation->set_rules('txtRutUsuario','Rut','required|callback_valida_rut');
+        
+        $this->form_validation->set_rules('txtNumeroenvio','Numero de envio','required');
+       
+        if($this->form_validation->run()===FALSE){
+            $detalle['estado']=$this->common_model->get_estado_solicitud();
+            $detalle['solicitud']=$this->solicitud_model->get_solicitud($id_solicitud);
+              $detalle['formaenvio']=$this->common_model->get_forma_envio();
+        
+            $detalle['detalle']=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+            $this->load->view("template/header",$this->data);
+            $this->load->view("documentos/solicitudes/reservadas",$detalle);
+            $this->load->view("template/footer",$this->data);
+        }else{
+         
+            if($this->input->post("hdAccion")){
+                
+                $this->load->model("productos_model");
+                $detalle_solicitud=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+
+                foreach($detalle_solicitud as $item){
+                    $producto=$this->productos_model->get_listado_productos("*",$item['idproductos']);
+
+                    $array_campos=array(
+                        "StockProducto"=>($producto['StockProducto']-$item["CantidadDetallesolicitud"]),
+                        "ReservaProducto"=>($producto['ReservaProducto']-$item["CantidadDetallesolicitud"])
+                    );
+
+
+                   $this->productos_model->modificar($item['idproductos'],$array_campos,false);
+                }
+                
+                $this->solicitud_model->modificar_solicitud($id_solicitud,array(
+                    "idEstadosolicitud"=>$this->input->post("hdAccion"),
+                    "NumeroenvioSolicitud"=>$this->input->post("txtNumeroenvio"),
+                    "idFormaenvio"=>$this->input->post("cboFormaenvio")
+                     ));
+
+                redirect("solicitudes_reservadas");
+
+            }
+        }
+        
+    }
+    public function solicitudes_despachada(){
+        $this->solicitudes(3,"despachadas");
+    }
+    public function despachadas($id_solicitud){
+        $this->load->model("solicitud_model");
+        $this->data['scripts']="<script>
+    $(document).ready(function() {
+        $('#datatable-productos').DataTable({
+                responsive: true,
+                'language':{
+                    'url':'http://cdn.datatables.net/plug-ins/f2c75b7247b/i18n/Spanish.json'
+                }
+        });
+    });
+</script>";
+        if($this->input->post("hdAccion")){
+            
+        $this->solicitud_model->modificar_solicitud($id_solicitud,array("idEstadosolicitud"=>$this->input->post("hdAccion")));
+            
+            redirect("solicitudes_reservadas");
+            
+        }
+        
+          $detalle['estado']=$this->common_model->get_estado_solicitud();
+        $detalle['solicitud']=$this->solicitud_model->get_solicitud($id_solicitud);
+          $detalle['formaenvio']=$this->common_model->get_forma_envio();
+        
+        $detalle['detalle']=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+        $this->load->view("template/header",$this->data);
+        $this->load->view("documentos/solicitudes/despachadas",$detalle);
+        $this->load->view("template/footer",$this->data);
+    }
+    public function solicitudes_pagada(){
+        $this->solicitudes(4,"pagadas");
+    }
+    public function pagadas($id_solicitud){
+        $this->load->model("solicitud_model");
+        $this->data['scripts']="<script>
+    $(document).ready(function() {
+        $('#datatable-productos').DataTable({
+                responsive: true,
+                'language':{
+                    'url':'http://cdn.datatables.net/plug-ins/f2c75b7247b/i18n/Spanish.json'
+                }
+        });
+    });
+</script>";
+        if($this->input->post("hdAccion")){
+            
+        $this->solicitud_model->modificar_solicitud($id_solicitud,array("idEstadosolicitud"=>$this->input->post("hdAccion")));
+            
+            redirect("solicitudes_reservadas");
+            
+        }
+        
+          $detalle['estado']=$this->common_model->get_estado_solicitud();
+        $detalle['solicitud']=$this->solicitud_model->get_solicitud($id_solicitud);
+          $detalle['formaenvio']=$this->common_model->get_forma_envio();
+        
+        $detalle['detalle']=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+        $this->load->view("template/header",$this->data);
+        $this->load->view("documentos/solicitudes/pagadas",$detalle);
+        $this->load->view("template/footer",$this->data);
+    }
+    public function solicitudes_anulada(){
+        $this->solicitudes(5,"anuladas");
+    }
+    public function anuladas($id_solicitud){
+        $this->load->model("solicitud_model");
+        $this->data['scripts']="<script>
+    $(document).ready(function() {
+        $('#datatable-productos').DataTable({
+                responsive: true,
+                'language':{
+                    'url':'http://cdn.datatables.net/plug-ins/f2c75b7247b/i18n/Spanish.json'
+                }
+        });
+    });
+</script>";
+        if($this->input->post("hdAccion")){
+            
+        $this->solicitud_model->modificar_solicitud($id_solicitud,array("idEstadosolicitud"=>$this->input->post("hdAccion")));
+            
+            redirect("solicitudes_reservadas");
+            
+        }
+        
+          $detalle['estado']=$this->common_model->get_estado_solicitud();
+        $detalle['solicitud']=$this->solicitud_model->get_solicitud($id_solicitud);
+          $detalle['formaenvio']=$this->common_model->get_forma_envio();
+        
+        $detalle['detalle']=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+        $this->load->view("template/header",$this->data);
+        $this->load->view("documentos/solicitudes/reservadas",$detalle);
+        $this->load->view("template/footer",$this->data);
+    }
+    
+    public function modificar($id_solicitud){
+        $this->load->model("solicitud_model");
+        $this->data['scripts']="<script>
+    $(document).ready(function() {
+        $('#datatable-productos').DataTable({
+                responsive: true,
+                'language':{
+                    'url':'http://cdn.datatables.net/plug-ins/f2c75b7247b/i18n/Spanish.json'
+                }
+        });
+    });
+</script>";
+        if($this->input->post()){
+            $campos=array(
+                "idEstadosolicitud"=>$this->input->post("cboEstado"),
+                "idFormaenvio"=>$this->input->post("cboFormaenvio"),
+                "NumeroenvioSolcitud"=>$this->input->post("txtNumeroenvio")
+            );
+            
+            $this->solicitud_model->modificar_solicitud($id_solicitud,$campos);
+            
+            redirect("solicitudes_abiertas");
+            
+        }
+        
+        $detalle['estado']=$this->common_model->get_estado_solicitud();
+        
+        $detalle['formaenvio']=$this->common_model->get_forma_envio();
+        $detalle['solicitud']=$this->solicitud_model->get_solicitud($id_solicitud);
+    
+        $detalle['detalle']=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+        $this->load->view("template/header",$this->data);
+        $this->load->view("documentos/solicitudes/modificar",$detalle);
+        $this->load->view("template/footer",$this->data);
+    }
+    public function eliminar($id_solicitud){
+        $this->load->model("solicitud_model");
+        
+        $resultado=$this->solicitud_model->get_solicitud($id_solicitud);
+        
+        if($resultado['idEstadosolicitud']>=1 && $resultado['idEstadosolicitud']<=4){
+            
+       
+        
+            $this->load->model("productos_model");
+            $detalle_solicitud=$this->solicitud_model->get_detalle_solicitud($id_solicitud);
+           
+            foreach($detalle_solicitud as $item){
+                $producto=$this->productos_model->get_listado_productos("*",$item['idproductos']);
+
+                switch($resultado['idEstadosolicitud']){
+                    case 2:
+                        $array_campos=array(
+                            "ReservaProducto"=>($producto['ReservaProducto']-$item["CantidadDetallesolicitud"])
+                        );
+                        break;
+
+                    case 3:
+                    case 4:
+                        $array_campos=array(
+                            "StockProducto"=>($producto['StockProducto']+$item["CantidadDetallesolicitud"])
+                        );
+                        break;
+                    default:
+                        $array_campos=array();
+
+                }
+                
+                
+                
+               $this->productos_model->modificar($item['idproductos'],$array_campos,false);
+            }
+        }
+        $this->solicitud_model->modificar_solicitud($id_solicitud,array("idEstadosolicitud"=>6));
+        
+        redirect("solicitudes_abiertas");
+            
+
+    }
+}

@@ -1,0 +1,1 @@
+<h3>Modificar</h3><fieldset>     <p><label>Nombre: <strong><?=$detalle['NombreProveedor']?></strong></label></p>    <p><label>Razon Social: <strong><?=$detalle['RazonSocial']?></strong></label><label></label></p>            </fieldset>
